@@ -1,321 +1,984 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DIGITAL ARC | DUAL PROTOCOL</title>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <style>
-        /* --- CORE STYLING --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; cursor: crosshair; }
-        body, html { 
-            height: 100%; 
-            background: #000; 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            overflow: hidden; 
-            color: #fff; 
-        }
-
-        /* --- SYSTEM INITIALIZATION --- */
-        #boot-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 1000; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center;
-        }
-        .boot-loader {
-            width: 40px; height: 40px; border: 2px solid #333; border-top-color: #00F3FF;
-            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* --- UI OVERLAYS --- */
-        .scanline {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
-            background-size: 100% 3px, 3px 100%; z-index: 500; pointer-events: none; opacity: 0.5;
-        }
-
-        .system-footer {
-            position: fixed; bottom: 40px; width: 100%; display: flex; 
-            justify-content: space-between; padding: 0 40px; z-index: 150;
-            font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.4);
-        }
-        .system-footer a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.2); }
-
-        .status-dot {
-            height: 6px; width: 6px; background-color: #00ff00; border-radius: 50%;
-            display: inline-block; margin-right: 8px; box-shadow: 0 0 8px #00ff00;
-        }
-
-        /* --- SPLIT UI --- */
-        .container { display: flex; width: 100%; height: 100vh; }
-        .section {
-            flex: 1; display: flex; flex-direction: column; justify-content: center;
-            align-items: center; transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative; padding: 40px;
-        }
-        .section:hover { flex: 2.2; }
-        .section:not(:hover) { filter: grayscale(1) brightness(0.3); }
-
-        .ppt-studio { background-color: #0a0a0a; border-right: 1px solid rgba(255,255,255,0.05); }
-        .tech-forge { background-color: #0f0f0f; }
-
-        h1 { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 100; letter-spacing: 15px; text-transform: uppercase; margin-bottom: 5px; }
-        .ppt-studio h1 { color: #D4AF37; }
-        .tech-forge h1 { color: #00F3FF; }
-
-        .tagline { font-size: 0.7rem; letter-spacing: 5px; opacity: 0.4; text-transform: uppercase; margin-bottom: 30px; }
-
-        /* --- BUTTONS --- */
-        .btn-action {
-            background: transparent; border: 1px solid currentColor; color: inherit;
-            padding: 14px 40px; text-transform: uppercase; letter-spacing: 4px;
-            font-size: 10px; font-weight: bold; transition: 0.4s; cursor: pointer;
-            text-decoration: none; display: inline-block;
-        }
-        .btn-action:hover { background: #fff; color: #000; }
-
-        /* --- MODAL --- */
-        #modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.96); display: none; justify-content: center;
-            align-items: center; z-index: 600; backdrop-filter: blur(20px);
-        }
-        .modal { 
-            background: #111; border: 1px solid #222; width: 95%; max-width: 550px; 
-            padding: 45px; position: relative; max-height: 90vh; overflow-y: auto;
-        }
-
-        .deliverables-box { background: rgba(255,255,255,0.03); padding: 20px; margin-bottom: 25px; border-left: 2px solid; }
-        .deliverables-box li { list-style: none; margin-bottom: 6px; font-size: 0.85rem; opacity: 0.7; }
-
-        input, select, textarea { 
-            width: 100%; background: #000; border: 1px solid #333; padding: 12px; 
-            color: #fff; margin-bottom: 12px; font-family: inherit; font-size: 0.9rem;
-        }
-        textarea { resize: none; height: 70px; }
-        
-        .tier-desc { font-size: 0.75rem; color: #888; margin-top: -8px; margin-bottom: 15px; letter-spacing: 1px; line-height: 1.4; }
-
-        /* --- STYLE PREVIEW CHIPS --- */
-        .style-tags { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .tag { font-size: 10px; padding: 4px 10px; border: 1px solid #333; text-transform: uppercase; letter-spacing: 1px; color: #555; }
-        .tag.active { color: #fff; border-color: #fff; }
-
-        /* --- SUCCESS & QR --- */
-        #success-msg {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; flex-direction: column; justify-content: center; align-items: center; z-index: 700; padding: 20px;
-        }
-        .qr-placeholder { width: 160px; height: 160px; background: #fff; margin: 20px 0; padding: 10px; }
-
-        /* --- TICKER --- */
-        .ticker { position: fixed; bottom: 0; width: 100%; background: #000; border-top: 1px solid #222; padding: 8px 0; z-index: 50; overflow: hidden; }
-        .ticker-content { display: inline-block; white-space: nowrap; font-size: 10px; letter-spacing: 2px; color: #444; animation: scroll 40s linear infinite; }
-        @keyframes scroll { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Abubakar Junaid — Portfolio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+ 
+    :root {
+      --bg: #f7f4ef;
+      --bg2: #efeae2;
+      --surface: #ffffff;
+      --surface2: #f0ece5;
+      --text: #1a1612;
+      --text-muted: #7a7060;
+      --accent: #c0392b;
+      --accent2: #e8a87c;
+      --border: rgba(26,22,18,0.10);
+      --border-strong: rgba(26,22,18,0.20);
+      --nav-blur: rgba(247,244,239,0.88);
+      --shadow: 0 4px 40px rgba(26,22,18,0.08);
+      --shadow-lg: 0 12px 60px rgba(26,22,18,0.14);
+      --grain-opacity: 0.035;
+    }
+ 
+    [data-theme="dark"] {
+      --bg: #0e0c0a;
+      --bg2: #141210;
+      --surface: #1a1612;
+      --surface2: #211d18;
+      --text: #f0ece5;
+      --text-muted: #7a7060;
+      --accent: #e05a47;
+      --accent2: #e8a87c;
+      --border: rgba(240,236,229,0.08);
+      --border-strong: rgba(240,236,229,0.15);
+      --nav-blur: rgba(14,12,10,0.90);
+      --shadow: 0 4px 40px rgba(0,0,0,0.30);
+      --shadow-lg: 0 12px 60px rgba(0,0,0,0.50);
+      --grain-opacity: 0.06;
+    }
+ 
+    html { scroll-behavior: smooth; }
+ 
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      overflow-x: hidden;
+      transition: background 0.5s ease, color 0.5s ease;
+      position: relative;
+    }
+ 
+    /* GRAIN TEXTURE OVERLAY */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: var(--grain-opacity);
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-size: 180px;
+    }
+ 
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+ 
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      padding: 0 60px;
+      height: 68px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 500;
+      background: var(--nav-blur);
+      backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.5s;
+    }
+ 
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      font-style: italic;
+      color: var(--text);
+      letter-spacing: 0;
+      position: relative;
+    }
+    .nav-logo span { color: var(--accent); }
+ 
+    .nav-right {
+      display: flex;
+      gap: 40px;
+      align-items: center;
+    }
+ 
+    .nav-links {
+      display: flex;
+      gap: 36px;
+      list-style: none;
+      align-items: center;
+    }
+ 
+    .nav-links a {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    .nav-links a:hover { color: var(--accent); }
+ 
+    /* ── THEME TOGGLE ICON BUTTON ── */
+    #theme-toggle {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-strong);
+      background: var(--surface);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+ 
+    #theme-toggle:hover {
+      border-color: var(--accent);
+      transform: scale(1.08);
+      box-shadow: 0 0 0 4px rgba(192,57,43,0.12);
+    }
+ 
+    #theme-toggle:active { transform: scale(0.94); }
+ 
+    .icon-sun, .icon-moon {
+      position: absolute;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+ 
+    /* LIGHT MODE: show sun, hide moon */
+    [data-theme="light"] .icon-sun { opacity: 1; transform: rotate(0deg) scale(1); }
+    [data-theme="light"] .icon-moon { opacity: 0; transform: rotate(-90deg) scale(0.6); }
+    /* DARK MODE: show moon, hide sun */
+    [data-theme="dark"] .icon-sun { opacity: 0; transform: rotate(90deg) scale(0.6); }
+    [data-theme="dark"] .icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
+ 
+    /* SUN ICON */
+    .icon-sun svg { width: 18px; height: 18px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
+ 
+    /* MOON ICON */
+    .icon-moon svg { width: 16px; height: 16px; fill: var(--accent); }
+ 
+    /* ── HERO ── */
+    #hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      padding-top: 68px;
+      position: relative;
+      overflow: hidden;
+    }
+ 
+    /* Big decorative background letter */
+    #hero::before {
+      content: 'AJ';
+      position: absolute;
+      right: -2%;
+      bottom: -8%;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 34vw;
+      font-weight: 700;
+      font-style: italic;
+      color: var(--border);
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+      transition: color 0.5s;
+      z-index: 0;
+    }
+ 
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 80px 48px 80px 80px;
+      position: relative;
+      z-index: 1;
+    }
+ 
+    .hero-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+      opacity: 0;
+      animation: slideIn 0.9s 0.1s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+ 
+    .eyebrow-dot {
+      width: 7px; height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+ 
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 0.6; }
+    }
+ 
+    .eyebrow-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+ 
+    h1.hero-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(4rem, 7vw, 7.5rem);
+      font-weight: 700;
+      line-height: 0.92;
+      letter-spacing: -2px;
+      color: var(--text);
+      margin-bottom: 32px;
+      opacity: 0;
+      animation: slideIn 0.9s 0.2s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+ 
+    h1.hero-name em {
+      font-style: italic;
+      color: var(--accent);
+      position: relative;
+      display: inline-block;
+    }
+ 
+    h1.hero-name em::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 4px;
+      height: 2px;
+      background: var(--accent2);
+      opacity: 0.5;
+      transform: scaleX(0);
+      transform-origin: left;
+      animation: underlineIn 1s 1.1s ease forwards;
+    }
+ 
+    @keyframes underlineIn { to { transform: scaleX(1); } }
+ 
+    .hero-tagline {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.9;
+      max-width: 400px;
+      margin-bottom: 52px;
+      font-weight: 400;
+      opacity: 0;
+      animation: slideIn 0.9s 0.3s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+ 
+    .hero-cta {
+      display: flex;
+      gap: 14px;
+      opacity: 0;
+      animation: slideIn 0.9s 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+ 
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 30px;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+    }
+ 
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+    }
+    .btn-primary:hover { background: var(--text); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(192,57,43,0.25); }
+ 
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1.5px solid var(--border-strong);
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+ 
+    /* HERO RIGHT — Photo */
+    .hero-right {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 80px 80px 0;
+      position: relative;
+      z-index: 1;
+    }
+ 
+    .photo-wrapper {
+      position: relative;
+      width: 300px;
+    }
+ 
+    /* Decorative corner bracket */
+    .photo-wrapper::before {
+      content: '';
+      position: absolute;
+      top: -16px; left: -16px;
+      width: 60px; height: 60px;
+      border-top: 2px solid var(--accent);
+      border-left: 2px solid var(--accent);
+      pointer-events: none;
+      transition: border-color 0.5s;
+    }
+    .photo-wrapper::after {
+      content: '';
+      position: absolute;
+      bottom: -16px; right: -16px;
+      width: 60px; height: 60px;
+      border-bottom: 2px solid var(--accent2);
+      border-right: 2px solid var(--accent2);
+      pointer-events: none;
+      transition: border-color 0.5s;
+    }
+ 
+    .photo-frame {
+      width: 100%;
+      aspect-ratio: 3/4;
+      overflow: hidden;
+      background: var(--surface2);
+      position: relative;
+    }
+ 
+    .photo-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      filter: grayscale(15%);
+      transition: filter 0.5s;
+    }
+    .photo-frame:hover img { filter: grayscale(0%); }
+ 
+    /* Photo overlaid label */
+    .photo-label {
+      position: absolute;
+      bottom: 20px;
+      left: -40px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+    }
+ 
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+ 
+    /* ── SECTION COMMONS ── */
+    section { padding: 110px 80px; }
+ 
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+ 
+    .section-label::before {
+      content: '';
+      width: 24px;
+      height: 1.5px;
+      background: var(--accent);
+    }
+ 
+    h2.section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.4rem, 4.5vw, 4.2rem);
+      font-weight: 700;
+      letter-spacing: -1.5px;
+      color: var(--text);
+      line-height: 1.05;
+      margin-bottom: 60px;
+    }
+    h2.section-title em { font-style: italic; color: var(--accent); }
+ 
+    /* ── ABOUT ── */
+    #about {
+      background: var(--bg2);
+      transition: background 0.5s;
+    }
+    .about-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+    }
+    .about-body p {
+      font-size: 1rem;
+      color: var(--text-muted);
+      line-height: 1.9;
+      margin-bottom: 20px;
+    }
+    .about-body p strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+ 
+    .about-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      margin-top: 8px;
+    }
+ 
+    .stat-card {
+      background: var(--surface);
+      padding: 36px 28px;
+      border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+    .stat-card:hover { border-color: var(--accent); }
+    .stat-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3.2rem;
+      font-weight: 700;
+      font-style: italic;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .stat-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+ 
+    /* ── SKILLS ── */
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+    }
+ 
+    .skill-card {
+      background: var(--surface);
+      padding: 52px 40px;
+      border: 1px solid var(--border);
+      transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+      position: relative;
+      overflow: hidden;
+    }
+ 
+    .skill-card::before {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+ 
+    .skill-card:hover::before { transform: scaleX(1); }
+    .skill-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); }
+ 
+    .skill-icon-wrap {
+      width: 52px; height: 52px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 28px;
+      transition: background 0.5s;
+    }
+ 
+    .skill-card h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+ 
+    .skill-card p {
+      font-size: 0.83rem;
+      color: var(--text-muted);
+      line-height: 1.85;
+      margin-bottom: 28px;
+    }
+ 
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      padding: 5px 12px;
+      border: 1px solid var(--border-strong);
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      transition: all 0.3s;
+    }
+    .tag:hover { border-color: var(--accent); color: var(--accent); }
+ 
+    /* ── PROJECTS ── */
+    #projects { background: var(--bg2); transition: background 0.5s; }
+ 
+    .project-list { border-top: 1px solid var(--border); }
+ 
+    .project-item {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 48px;
+      align-items: center;
+      padding: 44px 0;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+      transition: all 0.35s ease;
+      position: relative;
+    }
+ 
+    .project-item::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 0;
+      background: var(--accent);
+      transition: width 0.35s ease;
+      opacity: 0.06;
+    }
+ 
+    .project-item:hover::before { width: 100%; }
+    .project-item:hover { padding-left: 16px; }
+ 
+    .project-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem;
+      font-style: italic;
+      color: var(--border-strong);
+      font-weight: 700;
+      transition: color 0.35s;
+    }
+    .project-item:hover .project-num { color: var(--accent); }
+ 
+    .project-info h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+      transition: color 0.3s;
+    }
+ 
+    .project-info p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      max-width: 520px;
+    }
+ 
+    .project-arrow {
+      font-size: 1.6rem;
+      color: var(--border-strong);
+      transition: all 0.35s;
+    }
+    .project-item:hover .project-arrow {
+      color: var(--accent);
+      transform: translate(4px, -4px);
+    }
+ 
+    /* ── CONTACT ── */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+    }
+ 
+    .contact-left p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.9;
+      margin-bottom: 40px;
+    }
+ 
+    .contact-items { display: flex; flex-direction: column; }
+ 
+    .contact-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 0;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+      transition: all 0.3s;
+      color: var(--text);
+    }
+    .contact-link:hover { padding-left: 10px; color: var(--accent); }
+ 
+    .contact-link-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-right: 16px;
+      min-width: 70px;
+    }
+ 
+    .contact-link-val {
+      font-size: 0.9rem;
+      font-weight: 500;
+      flex: 1;
+    }
+ 
+    .contact-link-arrow {
+      font-size: 1rem;
+      transition: transform 0.3s;
+    }
+    .contact-link:hover .contact-link-arrow { transform: translate(4px, -4px); }
+ 
+    /* BIG EMAIL MARQUEE */
+    .contact-marquee {
+      overflow: hidden;
+      padding: 48px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+ 
+    .marquee-inner {
+      display: flex;
+      gap: 40px;
+      white-space: nowrap;
+      animation: marqueeScroll 14s linear infinite;
+    }
+ 
+    .marquee-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3.5rem;
+      font-style: italic;
+      color: var(--border-strong);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+ 
+    .marquee-text span { color: var(--accent); }
+ 
+    @keyframes marqueeScroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+ 
+    /* ── FOOTER ── */
+    footer {
+      background: var(--text);
+      color: var(--bg);
+      padding: 48px 80px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.5s, color 0.5s;
+    }
+ 
+    .footer-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      font-style: italic;
+    }
+ 
+    .footer-right {
+      text-align: right;
+    }
+ 
+    footer p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--bg2);
+      letter-spacing: 1px;
+      opacity: 0.5;
+    }
+ 
+    /* ── REVEAL ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+ 
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+ 
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      nav { padding: 0 24px; }
+      .nav-links { display: none; }
+      #hero { grid-template-columns: 1fr; }
+      .hero-right { padding: 0 32px 64px; justify-content: flex-start; }
+      section { padding: 72px 28px; }
+      .skills-grid { grid-template-columns: 1fr; }
+      .about-layout { grid-template-columns: 1fr; gap: 40px; }
+      .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+      footer { flex-direction: column; gap: 12px; text-align: center; padding: 36px 28px; }
+    }
+  </style>
 </head>
 <body>
-
-    <div id="boot-screen">
-        <div class="boot-loader"></div>
-        <p style="letter-spacing: 5px; font-size: 10px; opacity: 0.5;">INITIALIZING DIGITAL ARC SYSTEMS</p>
+ 
+  <nav>
+    <div class="nav-logo"><em>ABU</em><span>BAKAR</span></div>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#skills">Stack</a></li>
+        <li><a href="#projects">Work</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+      <!-- ICON THEME TOGGLE -->
+      <button id="theme-toggle" aria-label="Toggle theme" title="Toggle light/dark mode">
+        <!-- Sun icon -->
+        <span class="icon-sun">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="2" x2="12" y2="4"/>
+            <line x1="12" y1="20" x2="12" y2="22"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="2" y1="12" x2="4" y2="12"/>
+            <line x1="20" y1="12" x2="22" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        </span>
+        <!-- Moon icon -->
+        <span class="icon-moon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>
+          </svg>
+        </span>
+      </button>
     </div>
-
-    <div class="scanline"></div>
-
-    <div class="system-footer">
-        <div><span class="status-dot"></span>ACTIVE</div>
-        <div>GMAIL: <a href="mailto:your-junaidabubaks@gmail.com">DIRECT MAIL</a></div>
-        <div>ID: ARC-SYS-2026</div>
+  </nav>
+ 
+  <!-- ── HERO ── -->
+  <section id="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">
+        <div class="eyebrow-dot"></div>
+        <span class="eyebrow-text">CICS · BSIT 2nd Year · ZPPSU</span>
+      </div>
+      <h1 class="hero-name">
+        <em>Abubakar</em><br>Junaid
+      </h1>
+      <p class="hero-tagline">
+        Web developer &amp; graphic designer crafting functional systems and sharp visual identities from Zamboanga Peninsula Polytechnic State University.
+      </p>
+      <div class="hero-cta">
+        <a href="#projects" class="btn btn-primary">View Work ↗</a>
+        <a href="#contact" class="btn btn-ghost">Get In Touch</a>
+      </div>
     </div>
-
-    <div class="container">
-        <section class="section ppt-studio">
-            <p class="tagline">Visual Architecture</p>
-            <h1>PPT Studio</h1>
-            <button class="btn-action" onclick="openModal('ppt')">Configure Project</button>
-        </section>
-
-        <section class="section tech-forge">
-            <p class="tagline">System Engineering</p>
-            <h1>Tech Forge</h1>
-            <button class="btn-action" onclick="openModal('tech')">Initiate Build</button>
-        </section>
-    </div>
-
-    <div class="ticker">
-        <div class="ticker-content">
-            // PROJECT_104: COMPLETED // ENCRYPTION: ACTIVE // SERVER_LOC: ZAMBOANGA // CLIENT_SATISFACTION: 100% // UPTIME: 99.9% // READY_FOR_SYNC...
+ 
+    <div class="hero-right">
+      <div class="photo-wrapper">
+        <div class="photo-frame">
+          <img src="profile.jpg" alt="Abubakar Junaid" />
         </div>
+        <div class="photo-label">Designer &amp; Developer</div>
+      </div>
     </div>
-
-    <div id="modal-overlay">
-        <div class="modal">
-            <button onclick="closeModal()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:#fff; font-size:1.5rem; opacity:0.3; cursor:pointer;">&times;</button>
-            <h2 id="modal-title" style="letter-spacing: 5px; font-weight: 100; margin-bottom: 10px; text-transform: uppercase;">MODULE</h2>
-            
-            <div class="style-tags" id="style-tags-container"></div>
-
-            <div id="details" class="deliverables-box">
-                <ul id="deliverables-list"></ul>
-            </div>
-
-            <form id="orderForm" onsubmit="handleForm(event)">
-                <input type="text" id="from_name" placeholder="FULL NAME" required>
-                <input type="email" id="reply_to" placeholder="GMAIL (EMAIL)" required>
-                
-                <label style="font-size: 10px; letter-spacing: 2px; color: #444; display: block; margin-bottom: 5px;">SELECT PROTOCOL:</label>
-                <select id="package_tier" onchange="updateUI()">
-                    <option value="standard" data-price="250">Standard Protocol — ₱250</option>
-                    <option value="pro" data-price="500">Advanced Protocol — ₱500</option>
-                </select>
-                <p id="tier-description" class="tier-desc"></p>
-
-                <select id="style_type" required>
-                    <option value="minimalist">Minimalist & Clean</option>
-                    <option value="cyber">Cyber & High-Tech</option>
-                    <option value="corporate">Corporate & Executive</option>
-                    <option value="creative">Creative & Bold</option>
-                </select>
-
-                <textarea id="project_notes" placeholder="PROJECT SPECS (Optional details/colors/content)"></textarea>
-
-                <input type="tel" id="gcash_num" placeholder="GCASH NUMBER (11 DIGITS)" pattern="[0-9]{11}" required>
-
-                <div style="font-size: 1.5rem; margin: 15px 0; font-weight: bold; letter-spacing: 2px;">
-                    TOTAL: <span id="total-price">₱0</span>
-                </div>
-
-                <button type="submit" id="main-submit" class="btn-action" style="width: 100%; border-width: 2px;">Transmit Request</button>
-            </form>
-
-            <div id="success-msg">
-                <h2 id="success-header">COMPLETE</h2>
-                <div class="qr-placeholder">
-                    <img src="https://via.placeholder.com/150?text=GCASH+QR" alt="GCash QR" style="width:100%">
-                </div>
-                <p style="opacity: 0.5; font-size: 0.7rem; text-align: center; line-height: 1.5; margin-bottom: 20px;">
-                    SCAN TO SETTLE DEPOSIT.<br>SEND RECEIPT TO OUR ARCHITECT BELOW:
-                </p>
-                
-                <a href="https://www.facebook.com/profile.php?id=61587460312431" target="_blank" class="btn-action" style="background: #fff; color: #000; width: 100%; margin-bottom: 10px; text-align: center;">Message on Messenger</a>
-                
-                <button class="btn-action" style="width: 100%; opacity: 0.4; font-size: 8px;" onclick="closeModal()">Return to Terminal</button>
-            </div>
+  </section>
+ 
+  <!-- ── ABOUT ── -->
+  <section id="about">
+    <div class="section-label">01 — About Me</div>
+    <div class="about-layout">
+      <div class="about-body reveal">
+        <h2 class="section-title">Building<br><em>with</em> purpose</h2>
+        <p>I'm a <strong>technology enthusiast</strong> focused on building functional web systems and creative visual identities. My journey at <strong>ZPPSU</strong> has shaped my approach to solving real problems through code and design.</p>
+        <p>Every project I take on starts with a question: <em>what problem does this actually solve?</em> From backend utilities to visual branding, I work where logic meets aesthetics.</p>
+      </div>
+      <div class="about-stats reveal reveal-delay-2">
+        <div class="stat-card">
+          <div class="stat-num">2nd</div>
+          <div class="stat-desc">Year — BSIT</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-num">3+</div>
+          <div class="stat-desc">Languages</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">∞</div>
+          <div class="stat-desc">Ideas brewing</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">01</div>
+          <div class="stat-desc">Live project</div>
+        </div>
+      </div>
     </div>
-
-    <script>
-        const EMAILJS_PUBLIC_KEY = "X3QQWiJUeGkip5zuI"; 
-        const EMAILJS_SERVICE_ID = "service_50mw7el";
-        const EMAILJS_TEMPLATE_ID = "template_f1i8toh";
-
-        (function() { emailjs.init(EMAILJS_PUBLIC_KEY); })();
-
-        window.onload = () => {
-            setTimeout(() => { document.getElementById('boot-screen').style.display = 'none'; }, 1500);
-        };
-
-        const data = {
-            ppt: { 
-                color: '#D4AF37', 
-                tags: ['Slide Design', 'Data Viz', 'Infographics'],
-                list: { 
-                    standard: ['10 Clean Slides', 'Standard Layout', '48hr Delivery'], 
-                    pro: ['25+ Advanced Slides', 'Custom Graphics', 'Source Files', '24hr Sync'] 
-                },
-                desc: {
-                    standard: 'Essential visual deck. Ideal for students and quick reports.',
-                    pro: 'Premium architecture. Best for businesses and high-stakes presentations.'
-                }
-            },
-            tech: { 
-                color: '#00F3FF', 
-                tags: ['Web Dev', 'UI/UX', 'Database'],
-                list: { 
-                    standard: ['Single-Page Portfolio', 'Mobile Responsive', '3-Day Build'], 
-                    pro: ['Multi-Page System', 'Full Database Sync', 'Admin Access', 'Priority Build'] 
-                },
-                desc: {
-                    standard: 'Professional digital business card or landing page.',
-                    pro: 'Complete digital infrastructure for scaling businesses.'
-                }
-            }
-        };
-
-        let currentSvc = 'ppt';
-
-        function openModal(svc) {
-            currentSvc = svc;
-            document.getElementById('modal-overlay').style.display = 'flex';
-            updateUI();
+  </section>
+ 
+  <!-- ── SKILLS ── -->
+  <section id="skills">
+    <div class="section-label">02 — Tech Stack</div>
+    <h2 class="section-title reveal">Tools &amp;<br><em>technologies</em></h2>
+    <div class="skills-grid">
+      <div class="skill-card reveal reveal-delay-1">
+        <div class="skill-icon-wrap">⚡</div>
+        <h3>Web Development</h3>
+        <p>Dynamic, data-driven web applications with secure backend logic and clean frontend interfaces.</p>
+        <div class="tags">
+          <span class="tag">PHP</span>
+          <span class="tag">HTML</span>
+          <span class="tag">CSS</span>
+          <span class="tag">JavaScript</span>
+        </div>
+      </div>
+      <div class="skill-card reveal reveal-delay-2">
+        <div class="skill-icon-wrap">🗄️</div>
+        <h3>Database</h3>
+        <p>Relational database design and management — structured queries and airtight data integrity.</p>
+        <div class="tags">
+          <span class="tag">MySQL</span>
+          <span class="tag">SQL</span>
+          <span class="tag">CRUD</span>
+        </div>
+      </div>
+      <div class="skill-card reveal reveal-delay-3">
+        <div class="skill-icon-wrap">🎨</div>
+        <h3>Graphic Design</h3>
+        <p>Professional event materials, branding assets, and print-ready visual content that communicates clearly.</p>
+        <div class="tags">
+          <span class="tag">Canva</span>
+          <span class="tag">Layout</span>
+          <span class="tag">Branding</span>
+        </div>
+      </div>
+    </div>
+  </section>
+ 
+  <!-- ── PROJECTS ── -->
+  <section id="projects">
+    <div class="section-label">03 — Featured Work</div>
+    <h2 class="section-title reveal">Selected<br><em>projects</em></h2>
+    <div class="project-list">
+      <div class="project-item reveal">
+        <div class="project-num">01</div>
+        <div class="project-info">
+          <h3>Secure File Management</h3>
+          <p>A backend utility for handling student document uploads with directory security and SQL mapping. Built with PHP and MySQL for robust data handling.</p>
+        </div>
+        <div class="project-arrow">↗</div>
+      </div>
+      <!-- Placeholder for more projects -->
+      <div class="project-item reveal reveal-delay-1" style="opacity: 0.4; pointer-events: none;">
+        <div class="project-num">02</div>
+        <div class="project-info">
+          <h3>Coming Soon</h3>
+          <p>Next project in development...</p>
+        </div>
+        <div class="project-arrow">···</div>
+      </div>
+    </div>
+  </section>
+ 
+  <!-- ── CONTACT ── -->
+  <section id="contact">
+    <div class="section-label">04 — Contact</div>
+    <div class="contact-grid">
+      <div class="contact-left reveal">
+        <h2 class="section-title">Let's <em>build</em><br>together.</h2>
+        <p>Open to collaborations, freelance opportunities, and interesting conversations. Don't hesitate to reach out.</p>
+      </div>
+      <div class="contact-items reveal reveal-delay-2">
+        <a href="mailto:junaidabubaks@gmail.com" class="contact-link">
+          <span class="contact-link-label">Email</span>
+          <span class="contact-link-val">junaidabubaks@gmail.com</span>
+          <span class="contact-link-arrow">↗</span>
+        </a>
+        <a href="#" class="contact-link">
+          <span class="contact-link-label">School</span>
+          <span class="contact-link-val">ZPPSU — CICS</span>
+          <span class="contact-link-arrow">↗</span>
+        </a>
+        <a href="#" class="contact-link">
+          <span class="contact-link-label">Status</span>
+          <span class="contact-link-val" style="color: var(--accent);">● Available for work</span>
+          <span class="contact-link-arrow"></span>
+        </a>
+      </div>
+    </div>
+ 
+    <!-- Scrolling marquee -->
+    <div class="contact-marquee" style="margin-top: 80px;">
+      <div class="marquee-inner">
+        <span class="marquee-text">Let's work together <span>·</span></span>
+        <span class="marquee-text">junaidabubaks@gmail.com <span>·</span></span>
+        <span class="marquee-text">Let's work together <span>·</span></span>
+        <span class="marquee-text">junaidabubaks@gmail.com <span>·</span></span>
+        <span class="marquee-text">Let's work together <span>·</span></span>
+        <span class="marquee-text">junaidabubaks@gmail.com <span>·</span></span>
+      </div>
+    </div>
+  </section>
+ 
+  <footer>
+    <div class="footer-logo">Abubakar Junaid</div>
+    <div class="footer-right">
+      <p>© 2026 — CICS BSIT · ZPPSU</p>
+      <p style="margin-top:4px;"></p>
+    </div>
+  </footer>
+ 
+  <script>
+    // ── THEME TOGGLE ──
+    const html = document.documentElement;
+    const toggleBtn = document.getElementById('theme-toggle');
+ 
+    // Load saved theme
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') html.setAttribute('data-theme', 'dark');
+ 
+    toggleBtn.addEventListener('click', () => {
+      const isDark = html.getAttribute('data-theme') === 'dark';
+      html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+    });
+ 
+    // ── SCROLL REVEAL ──
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
         }
-
-        function closeModal() {
-            document.getElementById('modal-overlay').style.display = 'none';
-            document.getElementById('success-msg').style.display = 'none';
-            document.getElementById('orderForm').reset();
-        }
-
-        function updateUI() {
-            const s = data[currentSvc];
-            const tier = document.getElementById('package_tier').value;
-            const price = document.getElementById('package_tier').options[document.getElementById('package_tier').selectedIndex].getAttribute('data-price');
-            
-            document.getElementById('modal-title').innerText = currentSvc === 'ppt' ? 'PPT STUDIO' : 'TECH FORGE';
-            document.getElementById('modal-title').style.color = s.color;
-            document.getElementById('total-price').innerText = `₱${price}`;
-            document.getElementById('details').style.borderLeftColor = s.color;
-            document.getElementById('tier-description').innerText = s.desc[tier];
-            
-            const tagContainer = document.getElementById('style-tags-container');
-            tagContainer.innerHTML = '';
-            s.tags.forEach(t => {
-                const span = document.createElement('span');
-                span.className = 'tag active';
-                span.style.borderColor = s.color;
-                span.style.color = s.color;
-                span.innerText = t;
-                tagContainer.appendChild(span);
-            });
-
-            const list = document.getElementById('deliverables-list');
-            list.innerHTML = '';
-            s.list[tier].forEach(item => {
-                const li = document.createElement('li');
-                li.innerText = `[+] ${item}`;
-                list.appendChild(li);
-            });
-        }
-
-        function handleForm(e) {
-            e.preventDefault();
-            const btn = document.getElementById('main-submit');
-            btn.innerText = "TRANSMITTING...";
-            btn.disabled = true;
-
-            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-                service_type: currentSvc.toUpperCase(),
-                from_name: document.getElementById('from_name').value,
-                reply_to: document.getElementById('reply_to').value,
-                package_tier: document.getElementById('package_tier').value,
-                visual_style: document.getElementById('style_type').value,
-                project_notes: document.getElementById('project_notes').value || "No additional notes.",
-                gcash_num: document.getElementById('gcash_num').value,
-                total_price: document.getElementById('total-price').innerText
-            }).then(() => {
-                document.getElementById('success-msg').style.display = 'flex';
-                document.getElementById('success-header').style.color = data[currentSvc].color;
-                btn.disabled = false; btn.innerText = "Transmit Request";
-            }).catch((err) => {
-                alert("Transmission failed. System check required.");
-                console.error(err);
-                btn.disabled = false;
-                btn.innerText = "Transmit Request";
-            });
-        }
-    </script>
+      });
+    }, { threshold: 0.08 });
+    reveals.forEach(el => observer.observe(el));
+  </script>
 </body>
 </html>
